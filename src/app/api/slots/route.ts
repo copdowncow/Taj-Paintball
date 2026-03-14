@@ -4,8 +4,12 @@ import { supabase } from '@/lib/supabase';
 const DEFAULT = ['10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
   .map((t, i) => ({ id: `d${i}`, slot_time: t, is_active: true, sort_order: i }));
 
+// Только эти статусы блокируют слот
+const BLOCKING_STATUSES = ['new', 'awaiting_prepayment', 'prepayment_review', 'confirmed'];
+
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date');
+
   let slots = DEFAULT;
   try {
     const { data } = await supabase.from('time_slots').select('*').eq('is_active', true).order('sort_order');
@@ -16,12 +20,17 @@ export async function GET(req: NextRequest) {
 
   let booked = new Set<string>();
   try {
-    const { data } = await supabase.from('bookings').select('game_time')
-      .eq('game_date', date).not('booking_status', 'eq', 'cancelled');
+    const { data } = await supabase
+      .from('bookings')
+      .select('game_time')
+      .eq('game_date', date)
+      .in('booking_status', BLOCKING_STATUSES);
+
     booked = new Set(data?.map(b => String(b.game_time).substring(0, 5)) || []);
   } catch {}
 
   return NextResponse.json(slots.map(s => ({
-    ...s, is_available: !booked.has(String(s.slot_time).substring(0, 5)),
+    ...s,
+    is_available: !booked.has(String(s.slot_time).substring(0, 5)),
   })));
 }
