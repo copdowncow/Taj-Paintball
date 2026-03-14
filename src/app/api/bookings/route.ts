@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     supabase.from('booking_logs').insert({
       booking_id: booking.id, event_type: 'booking_created',
       description: 'Заявка создана через сайт', performed_by: 'client',
-    }).then().catch(console.error);
+    }).then(undefined, console.error);
 
     notifyNewBooking(booking).catch(console.error);
 
